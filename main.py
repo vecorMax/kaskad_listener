@@ -15,14 +15,13 @@ async def kaskad_listener():
     # Инициализация методов NATS Server (подключение к серверу + оформление подписки + подключение к БД PostgreSQL)
     messaging = CServiceMessaging()
 
-    # Demo version
-    register = 380
+    # Прием входящих сообщений на NATS Server
+    await messaging.receive()
 
     while 1:
         try:
-            await asyncio.ensure_future(messaging.send(register))
-            await asyncio.sleep(20)  # Пауза в 1 секунду
-
+            print("Current Time: " + str(datetime.datetime.now()))
+            await asyncio.sleep(1)
         except IOError as e:
             print(str(datetime.datetime.now()) + "Failed to read from instrument. Error: ", str(e))
         except ValueError as e:

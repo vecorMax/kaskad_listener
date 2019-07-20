@@ -4,9 +4,7 @@
 # *******************************************************************************************************
 import asyncio
 import logging
-import json
 import datetime
-import asyncpg
 import psycopg2
 from nats.aio.client import Client as NATSClientLibrary
 from nats.aio.errors import ErrNoServers
@@ -41,21 +39,18 @@ class CServiceMessaging:
             try:
                 await self.__nc.connect("192.168.1.104", loop=asyncio.get_running_loop())
                 logging.info(str(datetime.datetime.now()) + " Connection to NATS server is established.")
-                await CServiceMessaging.receive(self)
-                logging.info(str(datetime.datetime.now()) + " Created receiver messages from external devices to NATS server")
             except ErrNoServers as e:
                 logging.error(str(datetime.datetime.now()) + " Cannot connect to NATS server.", e)
 
     # ***************************************************************************************************
-    # Отправка сообщения на сервер NATS.                                                                *
+    # Отправка сообщения на сервера NATS и POSTGRESQL.                                                  *
     # ***************************************************************************************************
     async def send(self, message):
         await self.__connect()
         if not self.__nc.is_connected:
             return
         try:
-            # await self.__nc.publish("TEMP_IN_DEVICE_FROM_SERVER", message.encode("UTF-8"))
-            logging.info(str(datetime.datetime.now()) + " Publishing the message by subject to NATS server.")
+            # Publishing message to NATS Server by subscription
             await self.__nc.publish("DEMO", bytes(message))
             logging.info(str(datetime.datetime.now()) + " Message was successfully published to NATS server!")
         except Exception as e:
@@ -75,6 +70,7 @@ class CServiceMessaging:
     # Получение сообщения с сервера NATS.                                                               *
     # ***************************************************************************************************
     async def receive(self):
+        await self.__connect()
         if not self.__nc.is_connected:
             return
 
@@ -84,13 +80,15 @@ class CServiceMessaging:
                 reply = msg.reply
                 data = msg.data
                 print(data)
+                print()
+
+                # Inserting data to the table of PostgreSQL DB
                 cur = self.conn.cursor()
                 cur.execute('INSERT INTO kskd_dm (date_load, time_load, reg_load) VALUES(%s, %s, %s)',
-                               (datetime.date.today(), datetime.datetime.now().timetz(), data))
+                            (datetime.date.today(), datetime.datetime.now().timetz(), int(data)))
 
                 self.conn.commit()
                 logging.info(str(datetime.datetime.now()) + " Record inserted successfully into kskd_dm of kaskad_demo's database")
-                print()
             except Exception as e:
                 print(str(datetime.datetime.now()) + 'Exception:', str(e))
 
