@@ -6,6 +6,8 @@ import asyncio
 import logging
 import json
 import datetime
+import asyncpg
+import psycopg2
 from nats.aio.client import Client as NATSClientLibrary
 from nats.aio.errors import ErrNoServers
 
@@ -19,7 +21,16 @@ class CServiceMessaging:
     # ***************************************************************************************************
     def __init__(self):
         logging.basicConfig(level=logging.DEBUG)
+        # Подключение библиотеки NATS
         self.__nc = NATSClientLibrary()
+        # Соединение с PostgreSQL Database Server
+        self.conn = psycopg2.connect(
+            database="kaskad_demo",
+            user="postgres",
+            password="docker",
+            host="192.168.1.104"
+        )
+        self.__connect()
 
     # ***************************************************************************************************
     # Подключение к серверу NATS + оформление подписки на получение сообщений от пользователей          *
@@ -45,7 +56,7 @@ class CServiceMessaging:
         try:
             # await self.__nc.publish("TEMP_IN_DEVICE_FROM_SERVER", message.encode("UTF-8"))
             logging.info(str(datetime.datetime.now()) + " Publishing the message by subject to NATS server.")
-            await self.__nc.publish("DATA_FROM_CONTROLLER", bytes(message))
+            await self.__nc.publish("DEMO", bytes(message))
             logging.info(str(datetime.datetime.now()) + " Message was successfully published to NATS server!")
         except Exception as e:
             logging.error(str(datetime.datetime.now()) + " Exception.", e)
@@ -68,15 +79,19 @@ class CServiceMessaging:
             return
 
         async def message_handler(msg):
-            data = json.loads(msg.data.decode())
+            try:
+                subject = msg.subject
+                reply = msg.reply
+                data = msg.data
+                print(data)
+                cur = self.conn.cursor()
+                cur.execute('INSERT INTO kskd_dm (date_load, time_load, reg_load) VALUES(%s, %s, %s)',
+                               (datetime.date.today(), datetime.datetime.now().timetz(), data))
 
-            uuid = data['UUID']
-            obj_meas = data['ObjectMeasure']
-            cur_time = data['CurrentTime']
-            delay_temp = data['Delay']
+                self.conn.commit()
+                logging.info(str(datetime.datetime.now()) + " Record inserted successfully into kskd_dm of kaskad_demo's database")
+                print()
+            except Exception as e:
+                print(str(datetime.datetime.now()) + 'Exception:', str(e))
 
-            # CServiceMessaging.change_delay(delay_temp, 0)
-
-            print(data)
-
-        await self.__nc.subscribe("DATA_ON_CONTROLLER", cb=message_handler)
+        await self.__nc.subscribe("DEMO", cb=message_handler)

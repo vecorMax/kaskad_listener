@@ -6,35 +6,22 @@ import asyncio
 import logging
 import datetime
 import psycopg2
-import asyncpg
 # Подключаем библиотечный файл для отправки сообщений на сервер NATS
 from smt.rpi.nats.messaging.CServiceMessaging import CServiceMessaging
-# Подключаем библиотечный файл для управления транзакциями через сервер Postgre
-from smt.rpi.postgres.connection.CServicePostgre import CServicePostgre
 
 async def kaskad_listener():
     print(str(datetime.datetime.now()) + "Начало работы программы.")
 
-    # Инициализация методов NATS Server (соединение, отправка/передача данных...)
+    # Инициализация методов NATS Server (подключение к серверу + оформление подписки + подключение к БД PostgreSQL)
     messaging = CServiceMessaging()
 
-    postgre = CServicePostgre()
+    # Demo version
+    register = 380
 
     while 1:
         try:
-
-            # logging.info(str(datetime.datetime.now()) + " Reading requested a register from controller...")
-            # register_demo = instrument.read_register(545, 0)  # Второй параметр: Если, 1 - 770 -> 77.0
-            # logging.info(str(datetime.datetime.now()) + " Successfully read a register from controller!")
-            # print(register_demo)
-            # await asyncio.ensure_future(messaging.send(register_demo))
-            #
-            # await asyncio.sleep(1)  # Пауза в 1 секунду
-            #
-            # cursor = conn.cursor()
-            # cursor.execute('INSERT INTO kskd_dm (date_load, time_load, reg_load) VALUES(%s, %s, %s)',
-            #                (datetime.date.today(), datetime.datetime.now().timetz(), int(register_demo)))
-            # conn.commit()  # <- We MUST commit to reflect the inserted data
+            await asyncio.ensure_future(messaging.send(register))
+            await asyncio.sleep(20)  # Пауза в 1 секунду
 
         except IOError as e:
             print(str(datetime.datetime.now()) + "Failed to read from instrument. Error: ", str(e))
