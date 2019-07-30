@@ -1,11 +1,8 @@
 # Подключаем минимальный набор библиотек для работы
 import traceback
 import sys
-import minimalmodbus
 import asyncio
-import logging
 import datetime
-import psycopg2
 # Подключаем библиотечный файл для отправки сообщений на сервер NATS
 from smt.rpi.nats.messaging.CServiceMessaging import CServiceMessaging
 

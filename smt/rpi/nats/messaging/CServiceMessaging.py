@@ -8,6 +8,7 @@ import datetime
 import psycopg2
 from nats.aio.client import Client as NATSClientLibrary
 from nats.aio.errors import ErrNoServers
+# from main import cpuserial
 
 
 class CServiceMessaging:
@@ -23,11 +24,21 @@ class CServiceMessaging:
         self.__nc = NATSClientLibrary()
         # Соединение с PostgreSQL Database Server
         self.conn = psycopg2.connect(
-            database="kaskad_demo",
+            database="kaskad_demo2",
             user="postgres",
             password="docker",
             host="192.168.1.104"
         )
+        # Extract serial from cpuinfo file
+        self.cpuserial = "0000000000000000"
+        try:
+            f = open('/proc/cpuinfo', 'r')
+            for line in f:
+                if line[0:6] == 'Serial':
+                    self.cpuserial = line[10:26]
+            f.close()
+        except:
+            self.cpuserial = "ERROR000000000"
         self.__connect()
 
     # ***************************************************************************************************
@@ -84,11 +95,11 @@ class CServiceMessaging:
 
                 # Inserting data to the table of PostgreSQL DB
                 cur = self.conn.cursor()
-                cur.execute('INSERT INTO kskd_dm (date_load, time_load, reg_load) VALUES(%s, %s, %s)',
-                            (datetime.date.today(), datetime.datetime.now().timetz(), int(data)))
+                cur.execute('UPDATE kskd_dm SET date= %s, time= %s, reg_demo = %s WHERE id_device = %s AND serial_rpi = %s',
+                            (datetime.date.today(), datetime.datetime.now().timetz(), int(data), 2, self.cpuserial))
 
                 self.conn.commit()
-                logging.info(str(datetime.datetime.now()) + " Record inserted successfully into kskd_dm of kaskad_demo's database")
+                logging.info(str(datetime.datetime.now()) + " Record inserted successfully into kskd_dm of kaskad_demo2's database")
             except Exception as e:
                 print(str(datetime.datetime.now()) + 'Exception:', str(e))
 
